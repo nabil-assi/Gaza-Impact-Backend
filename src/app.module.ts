@@ -26,6 +26,11 @@ import { DashboardModule } from './auth/dashboard/dashboard.module';
         database: configService.get<string>('DB_DATABASE'),
         autoLoadEntities: true, 
         synchronize: true, 
+        extra: process.env.NODE_ENV === 'production' ? {
+    ssl: {
+      rejectUnauthorized: false,
+    },
+  } : {},
       }),
     }), // الفاصلة هنا طبيعية لفصل الـ Modules
     InitiativesModule,
