@@ -8,7 +8,7 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.enableCors({
-    origin: '*', // حط بورت الفرونت إند تبعك بالظبط هان لمنع الهجمات الخارجية
+    origin: ['http://localhost:8000', 'http://localhost:8001'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
