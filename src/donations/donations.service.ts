@@ -10,6 +10,7 @@ import { Initiative } from '../initiatives/entities/initiative.entity';
 import { CreateDonationDto } from './dto/create-donation.dto';
 import { generateBinanceSignature } from '../common/utils/binance-crypto.util';
 import * as crypto from 'crypto';
+import axios from 'axios';
 
 @Injectable()
 export class DonationsService {
@@ -130,4 +131,51 @@ export class DonationsService {
     // ...
     return {} as Donation; // (ضع الكود الأصلي هنا)
   }
+
+ 
+// أضف هذه داخل كلاس DonationsService
+async createBinanceOrder(donationId: string) {
+  const donation = await this.donationRepository.findOne({ 
+    where: { id: donationId },
+    relations: { initiative: true } 
+  });
+
+  if (!donation) throw new NotFoundException('Donation not found');
+
+  // البيانات المطلوبة حسب توثيق بينانس
+  const payload = {
+    env: { terminalType: 'WEB' },
+    merchantTradeNo: donation.referenceId,
+    orderAmount: donation.amount,
+    currency: 'USDT',
+    goods: {
+      goodsType: '01',
+      goodsCategory: 'Z000',
+      referenceGoodsId: donation.initiativeId,
+      goodsName: donation.initiative?.title || 'Donation',
+    }
+  };
+
+  // توليد التوقيع (يجب أن يكون لديك دالة توليد التوقيع الخاصة ببينانس)
+  const timestamp = Date.now().toString();
+  const nonce = Math.random().toString(36).substring(7);
+  
+  // ملاحظة: باينانس تتطلب توقيعاً معيناً (Headers: Binance-Pay-Certificate-SN, Signature)
+  // هذا تبسيط لعملية الاتصال:
+  const response = await axios.post(
+    'https://bpay.binanceapi.com/binancepay/openapi/v2/order',
+    payload,
+    {
+      headers: {
+        'Binance-Pay-Timestamp': timestamp,
+        'Binance-Pay-Nonce': nonce,
+        'Binance-Pay-Certificate-SN': process.env.BINANCE_CERT_SN,
+        // استخدم دالة التوقيع الخاصة بك هنا
+        'Binance-Pay-Signature': generateBinanceSignature(JSON.stringify(payload), process.env.BINANCE_SECRET_KEY),
+      }
+    }
+  );
+
+  return response.data.data; // ستعيد checkoutUrl
+}
 }

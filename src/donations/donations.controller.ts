@@ -17,13 +17,11 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class DonationsController {
   constructor(private readonly donationsService: DonationsService) {}
 
-  // 1. تسجيل تبرع جديد
   @Post()
   create(@Body() createDonationDto: CreateDonationDto) {
     return this.donationsService.create(createDonationDto);
   }
 
-  // 2. استقبال إشعار باينانس (Webhook) - هذا لا يحتاج لحماية بـ Guard لأنه مفتوح لباينانس
   @Post('webhook/binance')
   async handleBinanceWebhook(
     @Body() body: any,
@@ -32,19 +30,16 @@ export class DonationsController {
     return await this.donationsService.processBinancePayment(body, signature);
   }
 
-  // 3. جلب جميع التبرعات (للوحة تحكم الآدمن)
   @Get()
   findAll() {
     return this.donationsService.findAll();
   }
 
-  // 4. تتبع تبرع معين عبر الرقم المرجعي
   @Get('track/:referenceId')
   findByReference(@Param('referenceId') referenceId: string) {
     return this.donationsService.findByReference(referenceId);
   }
 
-  // 5. التحقق اليدوي (للآدمن)
   @UseGuards(JwtAuthGuard)
   @Patch(':id/verify')
   verifyDonation(
@@ -53,4 +48,9 @@ export class DonationsController {
   ) {
     return this.donationsService.verifyDonation(id, verifyDonationDto.status);
   }
+
+  @Post(':id/checkout')
+async createCheckout(@Param('id') id: string) {
+  return await this.donationsService.createBinanceOrder(id);
+}
 }
