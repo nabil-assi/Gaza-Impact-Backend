@@ -6,13 +6,13 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-  "build": "tsc -p tsconfig.build.json",
-  "start": "node dist/main.js",
-  "start:prod": "node dist/main.js",
-     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-     "start:dev": "nest start --watch",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "start:prod": "node dist/main.js",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
@@ -20,6 +20,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@binance/connector": "^3.6.1",
     "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",

@@ -7,6 +7,8 @@ import {
   Patch,
   Headers,
   UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { DonationsService } from './donations.service';
 import { CreateDonationDto } from './dto/create-donation.dto';
@@ -22,11 +24,18 @@ export class DonationsController {
     return this.donationsService.create(createDonationDto);
   }
 
+  @Post(':id/checkout')
+  async createCheckout(@Param('id') id: string) {
+    return await this.donationsService.createBinanceOrder(id);
+  }
+
   @Post('webhook/binance')
+  @HttpCode(HttpStatus.OK)
   async handleBinanceWebhook(
     @Body() body: any,
     @Headers('binance-pay-signature') signature: string,
   ) {
+    // نستخدم الـ HTTP 200 OK دائماً لأن بينانس تتوقع هذا الرد لتوقف إعادة الإرسال
     return await this.donationsService.processBinancePayment(body, signature);
   }
 
@@ -48,9 +57,4 @@ export class DonationsController {
   ) {
     return this.donationsService.verifyDonation(id, verifyDonationDto.status);
   }
-
-  @Post(':id/checkout')
-async createCheckout(@Param('id') id: string) {
-  return await this.donationsService.createBinanceOrder(id);
-}
 }
