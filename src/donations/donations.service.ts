@@ -3,13 +3,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Donation } from './entities/donation.entity';
 import { Initiative } from '../initiatives/entities/initiative.entity';
-import { Pay } from '@binance/connector';
 import { CreateDonationDto } from './dto/create-donation.dto';
+
+ import * as Binance from '@binance/connector';
 
 @Injectable()
 export class DonationsService implements OnModuleInit {
-
-  private payClient: Pay;
+  private payClient: any;
 
   constructor(
     @InjectRepository(Donation)
@@ -18,14 +18,14 @@ export class DonationsService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    // استخدم مفاتيحك من ملف .env
-    this.payClient = new Pay(
+    this.payClient = new Binance.Spot(
       process.env.BINANCE_API_KEY,
       process.env.BINANCE_SECRET_KEY,
       { baseURL: 'https://bpay.binanceapi.com' }
     );
   }
-// 1. إنشاء تبرع جديد
+
+  // 1. إنشاء تبرع جديد
   async create(createDonationDto: CreateDonationDto): Promise<Donation> {
     const initiativeExists = await this.dataSource.getRepository(Initiative).findOne({
       where: { id: createDonationDto.initiativeId, isActive: true },
@@ -69,7 +69,6 @@ export class DonationsService implements OnModuleInit {
     
     if (!donation) throw new NotFoundException('Donation not found');
     
-    // منع تغيير حالة التبرع إذا كان قد تم التحقق منه مسبقاً
     if (donation.status === 'verified') {
         throw new BadRequestException('This donation is already verified');
     }
@@ -78,6 +77,7 @@ export class DonationsService implements OnModuleInit {
     return await this.donationRepository.save(donation);
   }
 
+  // 5. إنشاء أمر بينانس
   async createBinanceOrder(donationId: string) {
     const donation = await this.donationRepository.findOne({ 
       where: { id: donationId },
@@ -86,38 +86,36 @@ export class DonationsService implements OnModuleInit {
 
     if (!donation) throw new NotFoundException('Donation not found');
 
-    // البيانات المطلوبة حسب الـ SDK
-    const orderData = {
-      env: { terminalType: 'WEB' },
-      merchantTradeNo: donation.referenceId,
-      orderAmount: Number(donation.amount),
-      currency: 'USDT',
-      goods: {
-        goodsType: '01',
-        goodsCategory: 'Z000',
-        referenceGoodsId: donation.initiativeId,
-        goodsName: donation.initiative?.title || 'Donation',
-      }
-    };
-
     try {
-      const response = await this.payClient.createOrder(orderData);
-      return response.data; // هذا يحتوي على checkoutUrl
+      // استخدام الطريقة الصحيحة عبر مكتبة بينانس للـ Webhook أو الطلبات
+      // ملاحظة: إذا كنت تستخدم Pay API الخاص ببينانس، فقد تحتاج لطلب POST عادي بـ axios 
+      // لأن المكتبة المذكورة تركز غالباً على Spot Trading
+      const response = await this.payClient.post('/binancepay/openapi/v2/order', {
+        env: { terminalType: 'WEB' },
+        merchantTradeNo: donation.referenceId,
+        orderAmount: Number(donation.amount),
+        currency: 'USDT',
+        goods: {
+          goodsType: '01',
+          goodsCategory: 'Z000',
+          referenceGoodsId: donation.initiativeId,
+          goodsName: donation.initiative?.title || 'Donation',
+        }
+      });
+      
+      return response.data;
     } catch (error) {
-      console.error('Binance Order Error:', error?.response?.data || error.message);
+      console.error('Binance API Error:', error?.response?.data || error.message);
       throw new BadRequestException('Payment gateway error');
     }
   }
 
   async processBinancePayment(body: any, signature: string) {
-    // التحقق من التوقيع (المكتبة تتكفل بالتفاصيل خلف الكواليس إذا استخدمت أدواتها)
     const { merchantTradeNo, status } = body;
-
     if (status === 'SUCCESS') {
       const donation = await this.donationRepository.findOne({
         where: { referenceId: merchantTradeNo },
       });
-
       if (donation && donation.status === 'pending') {
         return await this.completeOnlineDonation(donation.id);
       }
